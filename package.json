@@ -1,0 +1,46 @@
+{
+  "name": "lazylinear",
+  "version": "0.1.0",
+  "description": "A keyboard-first terminal UI for Linear, inspired by lazygit.",
+  "type": "module",
+  "bin": {
+    "lazylinear": "dist/src/cli.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "tsx src/cli.tsx --demo",
+    "start": "node dist/src/cli.js",
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test tests/**/*.test.ts",
+    "check": "npm run typecheck && npm test && npm run build"
+  },
+  "keywords": [
+    "linear",
+    "tui",
+    "terminal",
+    "cli",
+    "lazygit"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "cli-truncate": "^4.0.0",
+    "ink": "^6.3.1",
+    "react": "^19.1.1",
+    "string-width": "^7.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.30",
+    "@types/react": "^19.1.6",
+    "ink-testing-library": "^4.0.0",
+    "tsx": "^4.20.3",
+    "typescript": "^5.8.3"
+  }
+}
