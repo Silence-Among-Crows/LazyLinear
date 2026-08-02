@@ -1,209 +1,283 @@
-export type ResourceKind = "issues" | "projects" | "teams" | "customViews";
+import type { IssuePriority } from "./priorities.js";
+
+export type { IssuePriority } from "./priorities.js";
+
+export type ResourceKind = "issue" | "project" | "team" | "customView";
 
 export type ViewMode = "list" | "board";
 
 export type FocusPanel = "navigation" | "content" | "detail";
 
+export type WorkspaceEnvironment = "demo" | "linear";
+
 export interface Organization {
-    id: string;
-    name: string;
-    urlKey: string;
+    readonly id: string;
+    readonly name: string;
+    readonly urlKey: string;
 }
 
-export interface LinearViewer {
-    id: string;
-    name: string;
-    displayName: string;
-    email?: string;
-    organization: Organization;
+export interface WorkspaceViewer {
+    readonly id: string;
+    readonly name: string;
+    readonly displayName: string;
+    readonly email?: string;
+    readonly organization: Organization;
 }
 
-export interface LinearUser {
-    id: string;
-    name: string;
-    displayName: string;
-    email?: string;
-    avatarUrl?: string;
-    active?: boolean;
+export interface WorkspaceUser {
+    readonly id: string;
+    readonly name: string;
+    readonly displayName: string;
+    readonly email?: string;
+    readonly avatarUrl?: string;
+    readonly active?: boolean;
 }
 
-export interface TeamReference {
-    id: string;
-    name: string;
-    key: string;
-}
-
-export interface Team extends TeamReference {
-    description?: string;
-    color?: string;
-    icon?: string;
-    private?: boolean;
-    visibility?: string;
-    createdAt?: string;
-    updatedAt?: string;
+export interface Team {
+    readonly kind: "team";
+    readonly id: string;
+    readonly name: string;
+    readonly key: string;
+    readonly description?: string;
+    readonly color?: string;
+    readonly icon?: string;
+    readonly visibility: "workspace" | "private";
+    readonly createdAt?: string;
+    readonly updatedAt?: string;
 }
 
 export interface WorkflowState {
-    id: string;
-    name: string;
-    type: "backlog" | "unstarted" | "started" | "completed" | "canceled" | string;
-    color: string;
-    position?: number;
-    team?: TeamReference;
+    readonly id: string;
+    readonly name: string;
+    readonly type: string;
+    readonly color: string;
+    readonly position?: number;
+    readonly teamId: string;
 }
 
 export interface IssueLabel {
-    id: string;
-    name: string;
-    description?: string;
-    color: string;
-    parent?: {
-        id: string;
-        name: string;
-    } | null;
+    readonly id: string;
+    readonly name: string;
+    readonly description?: string;
+    readonly color: string;
+    readonly parentId?: string | null;
 }
 
 export interface ProjectStatus {
-    id: string;
-    name: string;
-    type: string;
-    color: string;
+    readonly id: string;
+    readonly name: string;
+    readonly type: string;
+    readonly color: string;
 }
 
-export interface ProjectReference {
-    id: string;
-    name: string;
-    color?: string;
-}
-
-export interface Project extends ProjectReference {
-    description?: string;
-    summary?: string;
-    icon?: string;
-    state?: string;
-    status?: ProjectStatus | null;
-    progress?: number;
-    startDate?: string | null;
-    targetDate?: string | null;
-    createdAt?: string;
-    updatedAt?: string;
-    url?: string;
-    teams: TeamReference[];
-    lead?: LinearUser | null;
+export interface Project {
+    readonly kind: "project";
+    readonly id: string;
+    readonly name: string;
+    readonly summary?: string;
+    readonly description?: string;
+    readonly color?: string;
+    readonly icon?: string;
+    readonly statusId?: string | null;
+    readonly progress?: number;
+    readonly startDate?: string | null;
+    readonly targetDate?: string | null;
+    readonly createdAt?: string;
+    readonly updatedAt?: string;
+    readonly url?: string;
+    readonly teamIds: readonly string[];
+    readonly leadId?: string | null;
 }
 
 export interface Issue {
-    id: string;
-    identifier: string;
-    title: string;
-    description?: string;
-    priority: number;
-    priorityLabel?: string;
-    estimate?: number | null;
-    dueDate?: string | null;
-    createdAt?: string;
-    updatedAt?: string;
-    url?: string;
-    state: WorkflowState;
-    team: TeamReference;
-    project?: ProjectReference | null;
-    assignee?: LinearUser | null;
-    creator?: LinearUser | null;
-    labels: IssueLabel[];
-    parent?: {
-        id: string;
-        identifier: string;
-        title: string;
-    } | null;
+    readonly kind: "issue";
+    readonly id: string;
+    readonly identifier: string;
+    readonly title: string;
+    readonly description?: string;
+    readonly priority: IssuePriority;
+    readonly estimate?: number | null;
+    readonly dueDate?: string | null;
+    readonly createdAt?: string;
+    readonly updatedAt?: string;
+    readonly url?: string;
+    readonly stateId: string;
+    readonly teamId: string;
+    readonly projectId?: string | null;
+    readonly assigneeId?: string | null;
+    readonly creatorId?: string | null;
+    readonly labelIds: readonly string[];
+    readonly parentId?: string | null;
 }
 
 export interface CustomView {
-    id: string;
-    name: string;
-    description?: string;
-    shared?: boolean;
-    modelName?: string;
-    filterData?: Record<string, unknown> | null;
-    projectFilterData?: Record<string, unknown> | null;
-    createdAt?: string;
-    updatedAt?: string;
-    creator?: LinearUser | null;
-    owner?: LinearUser | null;
-    issueIds: string[];
+    readonly kind: "customView";
+    readonly id: string;
+    readonly name: string;
+    readonly description?: string;
+    readonly shared: boolean;
+    readonly filterData?: Readonly<Record<string, unknown>> | null;
+    readonly projectFilterData?: Readonly<Record<string, unknown>> | null;
+    readonly createdAt?: string;
+    readonly updatedAt?: string;
+    readonly creatorId?: string | null;
+    readonly ownerId?: string | null;
+    readonly issueIds: readonly string[];
 }
 
 export interface RateLimitInfo {
-    requestLimit?: number;
-    requestRemaining?: number;
-    requestResetAt?: Date;
-    complexity?: number;
-    complexityLimit?: number;
-    complexityRemaining?: number;
+    readonly requestLimit?: number;
+    readonly requestRemaining?: number;
+    readonly requestResetAt?: string;
+    readonly complexity?: number;
+    readonly complexityLimit?: number;
+    readonly complexityRemaining?: number;
 }
 
-export interface WorkspaceData {
-    viewer: LinearViewer;
-    organization: Organization;
-    teams: Team[];
-    projects: Project[];
-    issues: Issue[];
-    workflowStates: WorkflowState[];
-    users: LinearUser[];
-    labels: IssueLabel[];
-    projectStatuses: ProjectStatus[];
-    customViews: CustomView[];
-    fetchedAt: string;
-    rateLimit?: RateLimitInfo;
+export interface WorkspaceSnapshot {
+    readonly viewer: WorkspaceViewer;
+    readonly teams: readonly Team[];
+    readonly projects: readonly Project[];
+    readonly issues: readonly Issue[];
+    readonly workflowStates: readonly WorkflowState[];
+    readonly users: readonly WorkspaceUser[];
+    readonly labels: readonly IssueLabel[];
+    readonly projectStatuses: readonly ProjectStatus[];
+    readonly customViews: readonly CustomView[];
+    readonly fetchedAt: string;
+    readonly rateLimit?: RateLimitInfo;
 }
 
-export interface IssueInput {
-    title: string;
-    teamId: string;
-    description?: string;
-    stateId?: string;
-    priority?: number;
-    projectId?: string | null;
-    assigneeId?: string | null;
-    labelIds?: string[];
-    dueDate?: string | null;
-    estimate?: number | null;
-    parentId?: string | null;
+export interface IssueCreateInput {
+    readonly title: string;
+    readonly teamId: string;
+    readonly description?: string;
+    readonly stateId?: string;
+    readonly priority?: IssuePriority;
+    readonly projectId?: string | null;
+    readonly assigneeId?: string | null;
+    readonly labelIds?: readonly string[];
+    readonly dueDate?: string | null;
+    readonly estimate?: number | null;
+    readonly parentId?: string | null;
 }
 
-export type IssueUpdateInput = Partial<IssueInput>;
-
-export interface ProjectInput {
-    name: string;
-    teamIds: string[];
-    description?: string;
-    content?: string;
-    color?: string;
-    icon?: string;
-    statusId?: string;
-    leadId?: string | null;
-    startDate?: string | null;
-    targetDate?: string | null;
+export interface IssueUpdateInput {
+    readonly title?: string;
+    readonly teamId?: string;
+    readonly description?: string;
+    readonly stateId?: string;
+    readonly priority?: IssuePriority;
+    readonly projectId?: string | null;
+    readonly assigneeId?: string | null;
+    readonly labelIds?: readonly string[];
+    readonly dueDate?: string | null;
+    readonly estimate?: number | null;
+    readonly parentId?: string | null;
 }
 
-export type ProjectUpdateInput = Partial<ProjectInput>;
-
-export interface TeamInput {
-    name: string;
-    key: string;
-    description?: string;
-    color?: string;
-    icon?: string;
-    private?: boolean;
+export interface ProjectCreateInput {
+    readonly name: string;
+    readonly teamIds: readonly string[];
+    readonly summary?: string;
+    readonly description?: string;
+    readonly color?: string;
+    readonly icon?: string;
+    readonly statusId?: string;
+    readonly leadId?: string | null;
+    readonly startDate?: string | null;
+    readonly targetDate?: string | null;
 }
 
-export type TeamUpdateInput = Partial<TeamInput>;
-
-export interface CustomViewInput {
-    name: string;
-    description?: string;
-    shared?: boolean;
-    filterData?: Record<string, unknown>;
-    projectFilterData?: Record<string, unknown>;
+export interface ProjectUpdateInput {
+    readonly name?: string;
+    readonly teamIds?: readonly string[];
+    readonly summary?: string;
+    readonly description?: string;
+    readonly color?: string;
+    readonly icon?: string;
+    readonly statusId?: string;
+    readonly leadId?: string | null;
+    readonly startDate?: string | null;
+    readonly targetDate?: string | null;
 }
 
-export type CustomViewUpdateInput = Partial<CustomViewInput>;
+export interface TeamCreateInput {
+    readonly name: string;
+    readonly key: string;
+    readonly description?: string;
+    readonly color?: string;
+    readonly icon?: string;
+    readonly visibility?: "workspace" | "private";
+}
+
+export interface TeamUpdateInput {
+    readonly name?: string;
+    readonly key?: string;
+    readonly description?: string;
+    readonly color?: string;
+    readonly icon?: string;
+    readonly visibility?: "workspace" | "private";
+}
+
+export interface CustomViewCreateInput {
+    readonly name: string;
+    readonly description?: string;
+    readonly shared?: boolean;
+    readonly filterData?: Readonly<Record<string, unknown>> | null;
+    readonly projectFilterData?: Readonly<Record<string, unknown>> | null;
+}
+
+export interface CustomViewUpdateInput {
+    readonly name?: string;
+    readonly description?: string;
+    readonly shared?: boolean;
+    readonly filterData?: Readonly<Record<string, unknown>> | null;
+    readonly projectFilterData?: Readonly<Record<string, unknown>> | null;
+}
+
+export type WorkspaceSave =
+    | { readonly kind: "issue"; readonly action: "create"; readonly input: IssueCreateInput }
+    | { readonly kind: "issue"; readonly action: "update"; readonly id: string; readonly input: IssueUpdateInput }
+    | { readonly kind: "project"; readonly action: "create"; readonly input: ProjectCreateInput }
+    | { readonly kind: "project"; readonly action: "update"; readonly id: string; readonly input: ProjectUpdateInput }
+    | { readonly kind: "team"; readonly action: "create"; readonly input: TeamCreateInput }
+    | { readonly kind: "team"; readonly action: "update"; readonly id: string; readonly input: TeamUpdateInput }
+    | { readonly kind: "customView"; readonly action: "create"; readonly input: CustomViewCreateInput }
+    | { readonly kind: "customView"; readonly action: "update"; readonly id: string; readonly input: CustomViewUpdateInput };
+
+export type WorkspaceResourceReference =
+    | { readonly kind: "issue"; readonly id: string }
+    | { readonly kind: "project"; readonly id: string }
+    | { readonly kind: "team"; readonly id: string }
+    | { readonly kind: "customView"; readonly id: string };
+
+export type WorkspaceRemoval =
+    | { readonly kind: "issue"; readonly action: "archive"; readonly id: string }
+    | { readonly kind: "project"; readonly action: "archive"; readonly id: string }
+    | { readonly kind: "team"; readonly action: "archive"; readonly id: string }
+    | { readonly kind: "customView"; readonly action: "delete"; readonly id: string };
+
+export type WorkspaceCommit = WorkspaceSave | WorkspaceRemoval;
+
+export interface WorkspaceCommitReceipt {
+    readonly action: "created" | "updated" | "archived" | "deleted";
+    readonly resource: WorkspaceResourceReference;
+}
+
+export type WorkspaceFailureCode =
+    | "authentication"
+    | "permission"
+    | "validation"
+    | "notFound"
+    | "rateLimited"
+    | "unavailable"
+    | "unsupported"
+    | "externalContract";
+
+export interface WorkspaceFailure {
+    readonly code: WorkspaceFailureCode;
+    readonly message: string;
+    readonly retryable: boolean;
+    readonly rateLimit?: RateLimitInfo;
+}

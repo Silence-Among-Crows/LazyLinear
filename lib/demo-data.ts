@@ -1,46 +1,50 @@
+import type { IssuePriority } from "./priorities.js";
 import type {
     CustomView,
     Issue,
     IssueLabel,
-    LinearUser,
     Project,
     ProjectStatus,
     Team,
     WorkflowState,
-    WorkspaceData,
+    WorkspaceSnapshot,
+    WorkspaceUser,
 } from "./types.js";
 
-const teams: Team[] = [
+const teams: readonly Team[] = [
     {
+        kind: "team",
         id: "team-core",
         name: "Core Platform",
         key: "CORE",
         description: "Runtime, API, data model, and reliability work.",
         color: "#5E6AD2",
         icon: "Cpu",
-        private: false,
+        visibility: "workspace",
     },
     {
+        kind: "team",
         id: "team-app",
         name: "Product Experience",
         key: "APP",
         description: "Desktop, web, interaction design, and accessibility.",
         color: "#26B5CE",
         icon: "Command",
-        private: false,
+        visibility: "workspace",
     },
     {
+        kind: "team",
         id: "team-growth",
         name: "Growth",
         key: "GROW",
         description: "Activation, lifecycle, and customer-facing launches.",
         color: "#D99A45",
         icon: "TrendingUp",
-        private: false,
+        visibility: "workspace",
     },
 ];
 
-const users: LinearUser[] = [
+const users: readonly WorkspaceUser[] = [
     { id: "user-xavier", name: "Xavier", displayName: "Xavier", email: "xavier@example.com", active: true },
     { id: "user-maya", name: "Maya Chen", displayName: "Maya", email: "maya@example.com", active: true },
     { id: "user-omar", name: "Omar Diallo", displayName: "Omar", email: "omar@example.com", active: true },
@@ -48,7 +52,7 @@ const users: LinearUser[] = [
     { id: "user-eli", name: "Eli Brooks", displayName: "Eli", email: "eli@example.com", active: true },
 ];
 
-const labels: IssueLabel[] = [
+const labels: readonly IssueLabel[] = [
     { id: "label-bug", name: "Bug", color: "#E5484D", description: "Something is not behaving as intended." },
     { id: "label-feature", name: "Feature", color: "#5E6AD2", description: "New product capability." },
     { id: "label-security", name: "Security", color: "#D6409F", description: "Security-sensitive work." },
@@ -57,7 +61,7 @@ const labels: IssueLabel[] = [
     { id: "label-customer", name: "Customer", color: "#4CB782", description: "Driven by direct customer feedback." },
 ];
 
-const projectStatuses: ProjectStatus[] = [
+const projectStatuses: readonly ProjectStatus[] = [
     { id: "project-status-planned", name: "Planned", type: "planned", color: "#6EA6D9" },
     { id: "project-status-started", name: "In progress", type: "started", color: "#E9C46A" },
     { id: "project-status-paused", name: "Paused", type: "paused", color: "#AD8EE6" },
@@ -74,107 +78,107 @@ const stateTemplates = [
     { suffix: "canceled", name: "Canceled", type: "canceled", color: "#8B93A1", position: 5 },
 ] as const;
 
-const workflowStates: WorkflowState[] = teams.flatMap((team) => stateTemplates.map((template) => ({
+const workflowStates: readonly WorkflowState[] = teams.flatMap((team) => stateTemplates.map((template) => ({
     id: `${team.id}-${template.suffix}`,
     name: template.name,
     type: template.type,
     color: template.color,
     position: template.position,
-    team: { id: team.id, name: team.name, key: team.key },
+    teamId: team.id,
 })));
 
-const projects: Project[] = [
+const projects: readonly Project[] = [
     {
+        kind: "project",
         id: "project-sync",
         name: "Realtime sync engine",
         summary: "Fast, observable delta sync across clients.",
         description: "Replace coarse polling with a resumable event stream and deterministic reconciliation.",
         color: "#5E6AD2",
         icon: "RefreshCcw",
-        state: "started",
-        status: projectStatuses[1],
+        statusId: "project-status-started",
         progress: 0.63,
         startDate: "2026-07-01",
         targetDate: "2026-09-12",
-        teams: [teams[0]!],
-        lead: users[2],
+        teamIds: ["team-core"],
+        leadId: "user-omar",
     },
     {
+        kind: "project",
         id: "project-terminal",
         name: "Keyboard-first workspace",
         summary: "Every core action without leaving the keyboard.",
         description: "Navigation, command palette, bulk actions, and focus semantics for high-volume operators.",
         color: "#26B5CE",
         icon: "Keyboard",
-        state: "started",
-        status: projectStatuses[1],
+        statusId: "project-status-started",
         progress: 0.46,
         startDate: "2026-07-18",
         targetDate: "2026-10-03",
-        teams: [teams[1]!, teams[0]!],
-        lead: users[1],
+        teamIds: ["team-app", "team-core"],
+        leadId: "user-maya",
     },
     {
+        kind: "project",
         id: "project-api",
         name: "Public API v2",
         summary: "A smaller, safer integration surface.",
         description: "Ship typed pagination, webhooks, and a coherent OAuth permission model.",
         color: "#D6409F",
         icon: "Braces",
-        state: "planned",
-        status: projectStatuses[0],
+        statusId: "project-status-planned",
         progress: 0.18,
         startDate: "2026-08-15",
         targetDate: "2026-11-28",
-        teams: [teams[0]!],
-        lead: users[3],
+        teamIds: ["team-core"],
+        leadId: "user-priya",
     },
     {
+        kind: "project",
         id: "project-onboarding",
         name: "First-run activation",
         summary: "Get a new workspace to its first completed cycle quickly.",
         description: "A focused setup path with sample data, import, and contextual guidance.",
         color: "#D99A45",
         icon: "Sparkles",
-        state: "started",
-        status: projectStatuses[1],
+        statusId: "project-status-started",
         progress: 0.74,
         startDate: "2026-06-22",
         targetDate: "2026-08-22",
-        teams: [teams[2]!, teams[1]!],
-        lead: users[4],
+        teamIds: ["team-growth", "team-app"],
+        leadId: "user-eli",
     },
     {
+        kind: "project",
         id: "project-reliability",
         name: "Reliability baseline",
         summary: "Make failures visible, bounded, and recoverable.",
         description: "Service objectives, incident tooling, and failure-mode cleanup for critical paths.",
         color: "#4CB782",
         icon: "ShieldCheck",
-        state: "completed",
-        status: projectStatuses[3],
+        statusId: "project-status-completed",
         progress: 1,
         startDate: "2026-04-10",
         targetDate: "2026-07-15",
-        teams: [teams[0]!],
-        lead: users[0],
+        teamIds: ["team-core"],
+        leadId: "user-xavier",
     },
 ];
 
 interface IssueSeed {
-    key: string;
-    title: string;
-    description: string;
-    team: number;
-    state: string;
-    priority: number;
-    project?: number;
-    assignee?: number;
-    labels?: number[];
-    dueDate?: string;
+    readonly key: string;
+    readonly title: string;
+    readonly description: string;
+    readonly team: number;
+    readonly state: string;
+    readonly priority: IssuePriority;
+    readonly project?: number;
+    readonly assignee?: number;
+    readonly labels?: readonly number[];
+    readonly dueDate?: string;
 }
 
-const issueSeeds: IssueSeed[] = [
+const issueSeeds: readonly IssueSeed[] = [
     { key: "CORE-128", title: "Resume event stream after a dropped connection", description: "Persist the last acknowledged cursor and resume without replaying already-applied mutations.", team: 0, state: "progress", priority: 1, project: 0, assignee: 2, labels: [1, 3], dueDate: "2026-08-04" },
     { key: "CORE-131", title: "Bound GraphQL connection fan-out", description: "Cap nested connection breadth and expose complexity information in client diagnostics.", team: 0, state: "review", priority: 2, project: 2, assignee: 3, labels: [3] },
     { key: "CORE-134", title: "Reject stale optimistic writes", description: "Use entity update timestamps to make conflicting mutations explicit instead of silently overwriting.", team: 0, state: "todo", priority: 2, project: 0, assignee: 0, labels: [0, 2] },
@@ -201,96 +205,98 @@ const issueSeeds: IssueSeed[] = [
     { key: "GROW-45", title: "Remove duplicate activation event", description: "The client and webhook worker both emit the same activation event.", team: 2, state: "done", priority: 1, project: 4, assignee: 2, labels: [0, 3] },
 ];
 
-const priorityLabels = ["No priority", "Urgent", "High", "Medium", "Low"];
-
-const issues: Issue[] = issueSeeds.map((seed, index) => {
+const issues: readonly Issue[] = issueSeeds.map((seed, index) => {
     const team = teams[seed.team]!;
-    const state = workflowStates.find((candidate) => candidate.id === `${team.id}-${seed.state}`)!;
     return {
+        kind: "issue",
         id: `issue-${index + 1}`,
         identifier: seed.key,
         title: seed.title,
         description: seed.description,
         priority: seed.priority,
-        priorityLabel: priorityLabels[seed.priority],
         estimate: seed.priority === 1 ? 5 : seed.priority === 2 ? 3 : 2,
         dueDate: seed.dueDate ?? null,
         createdAt: new Date(Date.UTC(2026, 6, 2 + index)).toISOString(),
         updatedAt: new Date(Date.UTC(2026, 6, 31, 10, 24 - index)).toISOString(),
         url: `https://linear.app/demo/issue/${seed.key}`,
-        state,
-        team: { id: team.id, name: team.name, key: team.key },
-        project: seed.project === undefined ? null : projects[seed.project],
-        assignee: seed.assignee === undefined ? null : users[seed.assignee],
-        creator: users[(index + 1) % users.length],
-        labels: (seed.labels ?? []).map((labelIndex) => labels[labelIndex]!),
-        parent: null,
+        stateId: `${team.id}-${seed.state}`,
+        teamId: team.id,
+        projectId: seed.project === undefined ? null : projects[seed.project]!.id,
+        assigneeId: seed.assignee === undefined ? null : users[seed.assignee]!.id,
+        creatorId: users[(index + 1) % users.length]!.id,
+        labelIds: (seed.labels ?? []).map((labelIndex) => labels[labelIndex]!.id),
+        parentId: null,
     };
 });
 
-const customViews: CustomView[] = [
+const stateById = new Map(workflowStates.map((state) => [state.id, state]));
+const labelById = new Map(labels.map((label) => [label.id, label]));
+
+const customViews: readonly CustomView[] = [
     {
+        kind: "customView",
         id: "view-urgent",
         name: "Urgent + active",
         description: "Urgent issues that have not reached a terminal state.",
         shared: true,
-        modelName: "Issue",
         filterData: {
             and: [
                 { priority: { eq: 1 } },
                 { state: { type: { nin: ["completed", "canceled"] } } },
             ],
         },
-        owner: users[0],
-        creator: users[0],
-        issueIds: issues.filter((issue) => issue.priority === 1 && !["completed", "canceled"].includes(issue.state.type)).map((issue) => issue.id),
+        ownerId: "user-xavier",
+        creatorId: "user-xavier",
+        issueIds: issues.filter((issue) => issue.priority === 1 && !["completed", "canceled"].includes(stateById.get(issue.stateId)!.type)).map((issue) => issue.id),
     },
     {
+        kind: "customView",
         id: "view-mine",
         name: "My open issues",
         description: "Everything assigned to Xavier that is still active.",
         shared: false,
-        modelName: "Issue",
         filterData: {
             and: [
                 { assignee: { id: { eq: "user-xavier" } } },
                 { state: { type: { nin: ["completed", "canceled"] } } },
             ],
         },
-        owner: users[0],
-        creator: users[0],
-        issueIds: issues.filter((issue) => issue.assignee?.id === "user-xavier" && !["completed", "canceled"].includes(issue.state.type)).map((issue) => issue.id),
+        ownerId: "user-xavier",
+        creatorId: "user-xavier",
+        issueIds: issues.filter((issue) => issue.assigneeId === "user-xavier" && !["completed", "canceled"].includes(stateById.get(issue.stateId)!.type)).map((issue) => issue.id),
     },
     {
+        kind: "customView",
         id: "view-review",
         name: "Waiting for review",
         description: "Cross-team work currently in review.",
         shared: true,
-        modelName: "Issue",
         filterData: { state: { name: { eq: "In Review" } } },
-        owner: users[1],
-        creator: users[1],
-        issueIds: issues.filter((issue) => issue.state.name === "In Review").map((issue) => issue.id),
+        ownerId: "user-maya",
+        creatorId: "user-maya",
+        issueIds: issues.filter((issue) => stateById.get(issue.stateId)?.name === "In Review").map((issue) => issue.id),
     },
     {
+        kind: "customView",
         id: "view-customer",
         name: "Customer-reported",
         description: "Open work carrying the Customer label.",
         shared: true,
-        modelName: "Issue",
         filterData: { labels: { some: { name: { eq: "Customer" } } } },
-        owner: users[4],
-        creator: users[4],
-        issueIds: issues.filter((issue) => issue.labels.some((label) => label.name === "Customer")).map((issue) => issue.id),
+        ownerId: "user-eli",
+        creatorId: "user-eli",
+        issueIds: issues.filter((issue) => issue.labelIds.some((labelId) => labelById.get(labelId)?.name === "Customer")).map((issue) => issue.id),
     },
 ];
 
-const demoWorkspace: WorkspaceData = {
+const demoWorkspace: WorkspaceSnapshot = {
     viewer: {
-        ...users[0]!,
+        id: "user-xavier",
+        name: "Xavier",
+        displayName: "Xavier",
+        email: "xavier@example.com",
         organization: { id: "organization-demo", name: "Northstar Labs", urlKey: "northstar-demo" },
     },
-    organization: { id: "organization-demo", name: "Northstar Labs", urlKey: "northstar-demo" },
     teams,
     projects,
     issues,
@@ -308,6 +314,7 @@ const demoWorkspace: WorkspaceData = {
     },
 };
 
-export function createDemoWorkspace(): WorkspaceData {
-    return structuredClone(demoWorkspace);
+export function createDemoWorkspace(): WorkspaceSnapshot {
+    const workspace = structuredClone(demoWorkspace);
+    return { ...workspace, fetchedAt: new Date().toISOString() };
 }

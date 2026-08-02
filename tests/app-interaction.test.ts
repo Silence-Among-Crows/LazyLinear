@@ -5,8 +5,6 @@ import { render } from "ink-testing-library";
 import stringWidth from "string-width";
 import { App } from "../src/app.js";
 
-const nativeFetch = globalThis.fetch;
-
 function jsonResponse(body: unknown): Response {
     return new Response(JSON.stringify(body), {
         status: 200,
@@ -30,6 +28,18 @@ async function flushRender(): Promise<void> {
 async function press(screen: ReturnType<typeof render>, input: string): Promise<void> {
     screen.stdin.write(input);
     await flushRender();
+}
+
+async function waitForFrame(
+    screen: ReturnType<typeof render>,
+    predicate: (frame: string) => boolean,
+): Promise<string> {
+    let frame = screen.lastFrame() ?? "";
+    for (let attempt = 0; attempt < 30 && !predicate(frame); attempt += 1) {
+        await flushRender();
+        frame = screen.lastFrame() ?? "";
+    }
+    return frame;
 }
 
 function overrideTerminalSize(width: number, height: number): () => void {
@@ -69,6 +79,8 @@ test("demo TUI navigates, toggles board grouping, opens help, and unmounts", asy
         }
     });
 
+    await flushRender();
+
     const initial = screen.lastFrame() ?? "";
     assert.match(initial, /Northstar Labs \/ My issues/u);
     assert.match(initial, /j\/k move · enter inspect/u);
@@ -82,7 +94,7 @@ test("demo TUI navigates, toggles board grouping, opens help, and unmounts", asy
     screen.stdin.write("2");
     await flushRender();
     const contentFocused = screen.lastFrame() ?? "";
-    assert.match(contentFocused, /enter inspect  n new  e edit  d archive/u);
+    assert.match(contentFocused, /enter inspect  n new  e edit  d remove/u);
 
     screen.stdin.write("b");
     await flushRender();
@@ -174,6 +186,8 @@ test("demo board moves preserve the selected issue while regrouping it", async (
 
     await press(screen, "j");
     await press(screen, "2");
+    await press(screen, "k");
+    await press(screen, "k");
     await press(screen, "b");
     const before = screen.lastFrame() ?? "";
     assert.match(before, /In Progress/u);
@@ -223,10 +237,11 @@ test("44x18 content, inspector, and editor frames remain bounded and readable", 
     assert.doesNotMatch(editor, / ields|═ save · esc cancel/u);
 });
 
-test("token modal authenticates a personal API key and opens its Linear workspace", async (context) => {
+test("token modal authenticates and reports an unexpectedly rejected workspace refresh", async (context) => {
     const personalApiKey = "lin_api_modal_personal";
     const authorizationHeaders: string[] = [];
-    globalThis.fetch = (async (input, init) => {
+    let returnInvalidWorkspaceContract = false;
+    const linearFetch = async (input: string | URL | Request, init?: RequestInit): Promise<Response> => {
         assert.equal(input, "https://api.linear.app/graphql");
         assert.equal(init?.method, "POST");
         authorizationHeaders.push(new Headers(init?.headers).get("Authorization") ?? "");
@@ -237,6 +252,9 @@ test("token modal authenticates a personal API key and opens its Linear workspac
         const body = JSON.parse(init.body) as { query: string };
         const operation = /\bquery\s+([A-Za-z0-9_]+)/u.exec(body.query)?.[1];
         if (operation === "LazyLinearViewer") {
+            if (returnInvalidWorkspaceContract) {
+                return jsonResponse({ data: { viewer: null } });
+            }
             return jsonResponse({
                 data: {
                     viewer: {
@@ -269,12 +287,11 @@ test("token modal authenticates a personal API key and opens its Linear workspac
             assert.fail(`Unexpected Linear bootstrap operation: ${operation ?? "unnamed"}`);
         }
         return jsonResponse({ data: { [field]: emptyConnection() } });
-    }) as typeof fetch;
+    };
 
-    const screen = render(React.createElement(App));
+    const screen = render(React.createElement(App, { linearFetch }));
     context.after(() => {
         screen.unmount();
-        globalThis.fetch = nativeFetch;
     });
     await flushRender();
 
@@ -295,6 +312,14 @@ test("token modal authenticates a personal API key and opens its Linear workspac
     assert.doesNotMatch(authenticatedFrame, /Connect to Linear/u);
     assert.equal(authorizationHeaders.length, 9);
     assert.deepEqual(authorizationHeaders, Array(9).fill(personalApiKey));
+
+    returnInvalidWorkspaceContract = true;
+    await press(screen, "r");
+    const failedRefresh = await waitForFrame(
+        screen,
+        (frame) => frame.includes("Unable to refresh the workspace:"),
+    );
+    assert.match(failedRefresh, /Unable to refresh the workspace:/u);
 });
 
 test("horizontal-only terminal changes are detected when a remote PTY emits no resize event", async (context) => {
@@ -344,4 +369,50 @@ test("horizontal-only terminal changes are detected when a remote PTY emits no r
     assertFrameFits(narrow, 60, 24);
     assert.match(narrow, /1 Navigation/u);
     assert.doesNotMatch(narrow, /2 My issues|3 Inspector/u);
+});
+
+test("board columns remain navigable while the navigation panel has focus", async (context) => {
+    const screen = render(React.createElement(App, { demo: true }));
+    context.after(() => screen.unmount());
+    await flushRender();
+
+    await press(screen, "j");
+    await press(screen, "b");
+    assert.match(screen.lastFrame() ?? "", /› Reject stale optimistic writes/u);
+
+    await press(screen, "l");
+    const moved = screen.lastFrame() ?? "";
+    assert.match(moved, /› Resume event stream after a dropped connection/u);
+    assert.doesNotMatch(moved, /› Reject stale optimistic writes/u);
+});
+
+test("demo journey creates, edits, moves, and archives one issue through the workspace session", async (context) => {
+    const screen = render(React.createElement(App, { demo: true }));
+    context.after(() => screen.unmount());
+    await waitForFrame(screen, (frame) => frame.includes("Northstar Labs / My issues"));
+
+    await press(screen, "2");
+    await press(screen, "n");
+    assert.match(screen.lastFrame() ?? "", /Create issue/u);
+    await press(screen, "Architectural flow");
+    await press(screen, "\x13");
+    let frame = await waitForFrame(screen, (candidate) => candidate.includes("Architectural flow") && !candidate.includes("Create issue"));
+    assert.match(frame, /Architectural flow/u);
+
+    await press(screen, "e");
+    await press(screen, " v2");
+    await press(screen, "\x13");
+    frame = await waitForFrame(screen, (candidate) => candidate.includes("Architectural flow v2") && !candidate.includes("Edit CORE"));
+    assert.match(frame, /Architectural flow v2/u);
+
+    await press(screen, "b");
+    await press(screen, "L");
+    frame = await waitForFrame(screen, (candidate) => candidate.includes("Architectural flow v2") && candidate.includes("updated issue"));
+    assert.match(frame, /Architectural flow v2/u);
+
+    await press(screen, "d");
+    assert.match(screen.lastFrame() ?? "", /Confirm this destructive action/u);
+    await press(screen, "y");
+    frame = await waitForFrame(screen, (candidate) => candidate.includes("archived issue") && !candidate.includes("Architectural flow v2"));
+    assert.doesNotMatch(frame, /Architectural flow v2/u);
 });

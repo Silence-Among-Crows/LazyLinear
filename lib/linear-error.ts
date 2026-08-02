@@ -11,7 +11,10 @@ export interface GraphQlErrorShape {
     };
 }
 
+export type LinearApiFailureKind = "network" | "unreadable" | "api" | "contract";
+
 export class LinearApiError extends Error {
+    readonly failureKind: LinearApiFailureKind;
     readonly code?: string;
     readonly graphQlErrors: GraphQlErrorShape[];
     readonly status?: number;
@@ -20,6 +23,7 @@ export class LinearApiError extends Error {
     constructor(
         message: string,
         options: {
+            failureKind?: LinearApiFailureKind;
             code?: string;
             graphQlErrors?: GraphQlErrorShape[];
             status?: number;
@@ -29,6 +33,7 @@ export class LinearApiError extends Error {
     ) {
         super(message, { cause: options.cause });
         this.name = "LinearApiError";
+        this.failureKind = options.failureKind ?? "contract";
         this.code = options.code;
         this.graphQlErrors = options.graphQlErrors ?? [];
         this.status = options.status;

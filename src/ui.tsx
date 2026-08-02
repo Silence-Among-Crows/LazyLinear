@@ -2,18 +2,20 @@ import React from "react";
 import { Box, Text } from "ink";
 import truncate from "cli-truncate";
 import stringWidth from "string-width";
-import type { FocusPanel, Issue, ViewMode, WorkspaceData } from "../lib/types.js";
+import { ISSUE_PRIORITIES } from "../lib/priorities.js";
+import type { FocusPanel, Team, ViewMode, WorkspaceEnvironment, WorkspaceSnapshot } from "../lib/types.js";
+import { footerCommandDescriptors } from "./commands.js";
 import {
     type ContentResource,
     type GroupBy,
+    type IssueContent,
     type NavigationEntry,
+    type ProjectContent,
     type ResourceGroup,
     isCustomView,
     isIssue,
     isProject,
     isTeam,
-    priorityColor,
-    priorityGlyph,
     projectStateColor,
     titleCase,
 } from "./domain.js";
@@ -36,7 +38,7 @@ export const colors = {
     green: "#8CCF7E",
 };
 
-export function Panel(props: {
+function Panel(props: {
     index: number;
     title: string;
     focused: boolean;
@@ -71,8 +73,8 @@ export function Panel(props: {
 }
 
 export function Header(props: {
-    workspace: WorkspaceData;
-    demo: boolean;
+    workspace: WorkspaceSnapshot;
+    environment: WorkspaceEnvironment;
     loading: boolean;
     title: string;
     width: number;
@@ -81,8 +83,8 @@ export function Header(props: {
     const compact = props.width < 64;
     const brand = compact ? "LL " : "LL lazylinear │ ";
     const right = compact
-        ? `${props.demo ? "DEMO" : "LIVE"} ${props.loading ? "sync…" : "ready"}`
-        : `${props.demo ? "DEMO" : "LIVE"}  ${props.loading ? "syncing…" : "synced"}${remaining === undefined ? "" : `  api ${remaining}`}`;
+        ? `${props.environment === "demo" ? "DEMO" : "LIVE"} ${props.loading ? "sync…" : "ready"}`
+        : `${props.environment === "demo" ? "DEMO" : "LIVE"}  ${props.loading ? "syncing…" : "synced"}${remaining === undefined ? "" : `  api ${remaining}`}`;
     const contentWidth = Math.max(1, props.width - 2);
     const middleWidth = Math.max(0, contentWidth - stringWidth(brand) - stringWidth(right) - 1);
     return (
@@ -91,20 +93,36 @@ export function Header(props: {
             {!compact && <Text bold color={colors.text}> lazylinear </Text>}
             {!compact && <Text color={colors.faint}>│ </Text>}
             {middleWidth > 0 && (
-                <Text color={colors.muted}>{truncate(`${props.workspace.organization.name} / ${props.title}`, middleWidth)}</Text>
+                <Text color={colors.muted}>{truncate(`${props.workspace.viewer.organization.name} / ${props.title}`, middleWidth)}</Text>
             )}
             <Box flexGrow={1} />
-            <Text color={props.demo ? colors.yellow : colors.green}>{right}</Text>
+            <Text color={props.environment === "demo" ? colors.yellow : colors.green}>{right}</Text>
         </Box>
     );
 }
 
-const sectionGlyphs: Record<string, string> = {
+const sectionGlyphs: Record<NavigationEntry["section"], string> = {
     Workspace: "◇",
     Views: "◫",
     Teams: "▦",
     Projects: "◆",
 };
+
+function priorityGlyph(priority: number): string {
+    if (priority === 1) {
+        return "!!!";
+    }
+    if (priority === 2) {
+        return "!! ";
+    }
+    if (priority === 3) {
+        return "!  ";
+    }
+    if (priority === 4) {
+        return "·  ";
+    }
+    return "—  ";
+}
 
 export function NavigationPanel(props: {
     entries: NavigationEntry[];
@@ -130,7 +148,7 @@ export function NavigationPanel(props: {
                     <React.Fragment key={entry.id}>
                         {showSection && (
                             <Text color={colors.faint} bold>
-                                {` ${sectionGlyphs[entry.section] ?? "·"} ${entry.section.toUpperCase()}`}
+                                {` ${sectionGlyphs[entry.section]} ${entry.section.toUpperCase()}`}
                             </Text>
                         )}
                         <Box paddingX={1} backgroundColor={absoluteIndex === props.activeIndex ? colors.panelRaised : undefined}>
@@ -150,7 +168,7 @@ export function NavigationPanel(props: {
     );
 }
 
-function issueLine(issue: Issue, width: number): React.ReactNode {
+function issueLine(issue: IssueContent, width: number): React.ReactNode {
     const identifierWidth = Math.min(11, Math.max(8, issue.identifier.length + 1));
     const statusWidth = width >= 80 ? 16 : 0;
     const projectWidth = width >= 105 ? 18 : 0;
@@ -158,7 +176,7 @@ function issueLine(issue: Issue, width: number): React.ReactNode {
     const titleWidth = Math.max(12, width - fixed - 5);
     return (
         <>
-            <Text color={priorityColor(issue.priority)}>{priorityGlyph(issue.priority)}</Text>
+            <Text color={ISSUE_PRIORITIES.find((priority) => priority.value === issue.priority)?.color ?? colors.faint}>{priorityGlyph(issue.priority)}</Text>
             <Text color={colors.faint}>{issue.identifier.padEnd(identifierWidth)}</Text>
             <Text color={colors.text}>{truncate(issue.title, titleWidth).padEnd(titleWidth)}</Text>
             {statusWidth > 0 && <Text color={issue.state.color}>{` ${truncate(issue.state.name, statusWidth - 1).padEnd(statusWidth - 1)}`}</Text>}
@@ -167,11 +185,8 @@ function issueLine(issue: Issue, width: number): React.ReactNode {
     );
 }
 
-function projectLine(resource: ContentResource, width: number): React.ReactNode {
-    if (!isProject(resource)) {
-        return null;
-    }
-    const state = resource.status?.type ?? resource.state ?? "planned";
+function projectLine(resource: ProjectContent, width: number): React.ReactNode {
+    const state = resource.status?.type ?? "planned";
     const stateLabel = resource.status?.name ?? titleCase(state);
     const progress = Math.round((resource.progress ?? 0) * 100);
     const progressLabel = `${String(progress).padStart(3)}%`;
@@ -191,10 +206,7 @@ function projectLine(resource: ContentResource, width: number): React.ReactNode 
     );
 }
 
-function teamLine(resource: ContentResource, width: number): React.ReactNode {
-    if (!isTeam(resource)) {
-        return null;
-    }
+function teamLine(resource: Team, width: number): React.ReactNode {
     const nameWidth = Math.max(14, Math.min(30, width - 24));
     return (
         <>
@@ -205,8 +217,8 @@ function teamLine(resource: ContentResource, width: number): React.ReactNode {
     );
 }
 
-export function ListView(props: {
-    items: ContentResource[];
+function ListView(props: {
+    items: readonly ContentResource[];
     selectedIndex: number;
     width: number;
     height: number;
@@ -232,11 +244,13 @@ export function ListView(props: {
                         backgroundColor={selected ? colors.panelRaised : undefined}
                     >
                         <Text color={selected ? colors.cyan : colors.faint}>{selected ? "›" : " "}</Text>
-                        {isIssue(resource)
+                        {resource.kind === "issue"
                             ? issueLine(resource, props.width - 5)
-                            : isProject(resource)
+                            : resource.kind === "project"
                                 ? projectLine(resource, props.width - 5)
-                                : teamLine(resource, props.width - 5)}
+                                : resource.kind === "team"
+                                    ? teamLine(resource, props.width - 5)
+                                    : <Text color={colors.text}>{truncate(resource.name, props.width - 5)}</Text>}
                     </Box>
                 );
             })}
@@ -273,8 +287,8 @@ function boardCard(resource: ContentResource, width: number, selected: boolean):
     return null;
 }
 
-export function BoardView(props: {
-    groups: ResourceGroup[];
+function BoardView(props: {
+    groups: readonly ResourceGroup[];
     selectedId?: string;
     width: number;
     height: number;
@@ -326,14 +340,14 @@ export function BoardView(props: {
 export function ContentPanel(props: {
     title: string;
     subtitle: string;
-    items: ContentResource[];
+    items: readonly ContentResource[];
     selectedIndex: number;
     focused: boolean;
     width: number;
     height: number;
     mode: ViewMode;
     groupBy: GroupBy;
-    groups: ResourceGroup[];
+    groups: readonly ResourceGroup[];
     search: string;
     searching: boolean;
 }) {
@@ -383,7 +397,7 @@ function Property(props: { label: string; value: string; width: number }) {
     );
 }
 
-function issueDetail(issue: Issue, width: number, height: number): React.ReactNode {
+function issueDetail(issue: IssueContent, width: number, height: number): React.ReactNode {
     const contentWidth = Math.max(8, width - 4);
     const descriptionWidth = Math.max(15, width - 6);
     if (height < 30) {
@@ -429,13 +443,10 @@ function issueDetail(issue: Issue, width: number, height: number): React.ReactNo
     );
 }
 
-function projectDetail(resource: ContentResource, width: number, height: number): React.ReactNode {
-    if (!isProject(resource)) {
-        return null;
-    }
+function projectDetail(resource: ProjectContent, width: number, height: number): React.ReactNode {
     const progress = Math.round((resource.progress ?? 0) * 100);
     const contentWidth = Math.max(8, width - 4);
-    const state = resource.status?.name ?? titleCase(resource.state ?? "planned");
+    const state = resource.status?.name ?? titleCase("planned");
     if (height < 30) {
         return (
             <Box flexDirection="column" paddingX={1} overflow="hidden">
@@ -469,16 +480,13 @@ function projectDetail(resource: ContentResource, width: number, height: number)
     );
 }
 
-function teamDetail(resource: ContentResource, width: number, height: number): React.ReactNode {
-    if (!isTeam(resource)) {
-        return null;
-    }
+function teamDetail(resource: Team, width: number, height: number): React.ReactNode {
     const contentWidth = Math.max(8, width - 4);
     if (height < 30) {
         return (
             <Box flexDirection="column" paddingX={1} overflow="hidden">
                 <Text bold color={colors.text}>{truncate(`TEAM ${resource.key} ${resource.name}`, contentWidth)}</Text>
-                <Property label="Visibility" value={resource.private ? "Private" : "Workspace"} width={contentWidth} />
+                <Property label="Visibility" value={resource.visibility === "private" ? "Private" : "Workspace"} width={contentWidth} />
                 <Property label="Updated" value={resource.updatedAt?.slice(0, 10) ?? "—"} width={contentWidth} />
                 <Text color={colors.faint}>DESCRIPTION</Text>
                 <Text color={colors.muted}>{truncate(resource.description || "No description.", contentWidth)}</Text>
@@ -490,7 +498,7 @@ function teamDetail(resource: ContentResource, width: number, height: number): R
             <Text color={resource.color ?? colors.cyan}>TEAM  {resource.key}</Text>
             <Text bold color={colors.text} wrap="wrap">{resource.name}</Text>
             <Text> </Text>
-            <Property label="Visibility" value={resource.private ? "Private" : "Workspace"} width={contentWidth} />
+            <Property label="Visibility" value={resource.visibility === "private" ? "Private" : "Workspace"} width={contentWidth} />
             <Property label="Updated" value={resource.updatedAt?.slice(0, 10) ?? "—"} width={contentWidth} />
             <Text> </Text>
             <Text color={colors.faint}>DESCRIPTION</Text>
@@ -529,7 +537,7 @@ export function DetailPanel(props: {
     );
 }
 
-export function EmptyState(props: { title: string; body: string }) {
+function EmptyState(props: { title: string; body: string }) {
     return (
         <Box flexGrow={1} flexDirection="column" justifyContent="center" alignItems="center" paddingX={2}>
             <Text color={colors.cyan}>◇</Text>
@@ -546,9 +554,9 @@ export function Footer(props: {
     error: boolean;
     width: number;
 }) {
-    const shortcuts = props.focus === "navigation"
-        ? "j/k move  enter open  n new  v new-view  / search  tab panel  ? help  q quit"
-        : `j/k move  ${props.mode === "board" ? "h/l column  H/L move-card  " : ""}enter inspect  n new  e edit  d archive  b layout  g group  r refresh`;
+    const shortcuts = footerCommandDescriptors(props.focus, props.mode)
+        .map((command) => command.footerLabel)
+        .join("  ");
     if (props.width < 72 && props.error && props.status.trim() !== "") {
         return (
             <Box height={1} paddingX={1} backgroundColor={colors.panelRaised}>
@@ -560,7 +568,7 @@ export function Footer(props: {
         ? 0
         : props.width < 72
             ? Math.min(20, Math.max(12, Math.floor(props.width * 0.4)))
-            : Math.min(Math.max(0, props.width - shortcuts.length - 5), 48);
+            : Math.min(48, Math.max(20, Math.floor(props.width * 0.3)));
     return (
         <Box height={1} paddingX={1} backgroundColor={colors.panelRaised}>
             <Text color={colors.yellow}>{truncate(shortcuts, Math.max(10, props.width - statusWidth - 4))}</Text>

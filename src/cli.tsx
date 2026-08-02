@@ -1,7 +1,18 @@
 #!/usr/bin/env node
+import { existsSync } from "node:fs";
+import { createRequire } from "node:module";
+import { fileURLToPath } from "node:url";
 import React from "react";
 import { render } from "ink";
 import { App } from "./app.js";
+
+type PackageMetadata = Pick<typeof import("../package.json"), "version">;
+
+const adjacentPackageUrl = new URL("../package.json", import.meta.url);
+const packageUrl = existsSync(adjacentPackageUrl)
+    ? adjacentPackageUrl
+    : new URL("../../package.json", import.meta.url);
+const packageMetadata = createRequire(import.meta.url)(fileURLToPath(packageUrl)) as PackageMetadata;
 
 interface CliOptions {
     demo: boolean;
@@ -65,7 +76,7 @@ if (options.error) {
 } else if (options.help) {
     printHelp();
 } else if (options.version) {
-    process.stdout.write("lazylinear 0.1.0\n");
+    process.stdout.write(`lazylinear ${packageMetadata.version}\n`);
 } else if (!process.stdin.isTTY || !process.stdout.isTTY) {
     process.stderr.write("LazyLinear requires interactive terminal input and output. Run it directly in a TTY.\n");
     process.exitCode = 1;

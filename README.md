@@ -42,6 +42,8 @@ Create and edit dialogs cover the core fields for issues, projects, teams, and i
 
 Custom views are real Linear `CustomView` records. Simple team, workflow-type, priority, project, and assignee filters are composed into `IssueFilter`; the editor also accepts raw `IssueFilter` JSON for the rest of Linear's schema. View membership is loaded from `customView.issues` rather than reimplementing Linear's filter semantics client-side.
 
+Demo mode evaluates a documented subset of the same issue-filter shape: recursive `and`/`or`, priority, state ID/name/type, team/project/assignee ID, and label ID/name with `some`, using `eq`, `neq`, `in`, and `nin` where applicable. Unsupported fields, comparators, malformed filters, and non-empty project filters are rejected before a custom view is saved rather than silently matching every issue.
+
 ## Keys
 
 | Key | Action |
@@ -58,7 +60,7 @@ Custom views are real Linear `CustomView` records. Simple team, workflow-type, p
 | `n` | Create an issue, project, or team for the current context |
 | `v` | Create a Linear custom view |
 | `e` | Edit the selected content or focused sidebar resource |
-| `d` | Archive the selected resource after confirmation |
+| `d` | Archive an issue, project, or team; permanently delete a custom view after confirmation |
 | `Space` | Advance the selected issue to its next workflow state |
 | `r` | Refresh from Linear |
 | `?` | Open full keybinding help |
