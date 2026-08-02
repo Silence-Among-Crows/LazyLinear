@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="LazyLinear is a keyboard-first terminal client for Linear, inspired by lazygit.">
+    <meta name="theme-color" content="#080A0C">
+    <title>LazyLinear | Linear, at home in your terminal</title>
+    <link rel="stylesheet" href="./site.css">
+</head>
+<body>
+    <a class="skip-link" href="#main">Skip to content</a>
+
+    <header class="site-header">
+        <div class="shell header-inner">
+            <a class="brand" href="#top" aria-label="LazyLinear home">
+                <span class="brand-mark" aria-hidden="true">LL</span>
+                <span>lazylinear</span>
+            </a>
+            <nav aria-label="Primary navigation">
+                <a href="#what-it-does">What it does</a>
+                <a href="#start">Start</a>
+                <a href="https://github.com/Silence-Among-Crows/LazyLinear">GitHub</a>
+            </nav>
+        </div>
+    </header>
+
+    <main id="main">
+        <section class="hero shell" id="top" aria-labelledby="hero-title">
+            <div class="hero-copy">
+                <h1 id="hero-title">Linear, at home in your terminal.</h1>
+                <p class="lede">LazyLinear is a keyboard-first TUI built around the interaction model that makes lazygit feel fast. Browse issues, projects, teams, and custom views, then inspect and update the work without leaving the keyboard.</p>
+                <div class="hero-actions">
+                    <a class="button primary" href="#start">See the intended setup</a>
+                    <a class="button secondary" href="https://github.com/Silence-Among-Crows/LazyLinear#readme">Read the documentation</a>
+                </div>
+                <p class="meta-line">Open source <span aria-hidden="true">·</span> MIT licensed <span aria-hidden="true">·</span> Node.js 20+</p>
+            </div>
+
+            <figure class="terminal-figure">
+                <img src="./lazylinear-demo.png" width="2212" height="1244" alt="LazyLinear demo mode running in WezTerm, showing workspace navigation, the issue list, and the inspector.">
+            </figure>
+        </section>
+
+        <section class="section shell" id="what-it-does" aria-labelledby="capabilities-title">
+            <div class="section-heading">
+                <p class="eyebrow">The working loop</p>
+                <h2 id="capabilities-title">The useful parts of Linear, kept in view.</h2>
+            </div>
+            <div class="capabilities">
+                <article>
+                    <p class="section-number" aria-hidden="true">01</p>
+                    <h3>Keep your context</h3>
+                    <p>Persistent navigation, content, and inspector panels keep the selected work visible while you move through a workspace.</p>
+                </article>
+                <article>
+                    <p class="section-number" aria-hidden="true">02</p>
+                    <h3>Work from the keyboard</h3>
+                    <p>Search lists, switch to boards, move issues, and create or edit core Linear records with discoverable shortcuts.</p>
+                </article>
+                <article>
+                    <p class="section-number" aria-hidden="true">03</p>
+                    <h3>Connect directly</h3>
+                    <p>LazyLinear talks to Linear's GraphQL API. The interactive prompt masks your token and keeps it in process memory rather than writing it to disk.</p>
+                </article>
+            </div>
+            <p class="scope-note">It is deliberately focused on issues, projects, teams, and issue custom views. It does not cover every setting and surface in Linear.</p>
+        </section>
+
+        <section class="section story shell" aria-labelledby="story-title">
+            <div class="section-heading">
+                <p class="eyebrow">Why it exists</p>
+                <h2 id="story-title">Built because the interaction felt right.</h2>
+            </div>
+            <div class="story-copy">
+                <p>Skuffd liked lazygit and was inspired to burn some tokens building the same kind of focused terminal workflow for Linear.</p>
+                <p>It worked so well that he decided to publish it.</p>
+            </div>
+        </section>
+
+        <section class="section start shell" id="start" aria-labelledby="start-title">
+            <div class="section-heading">
+                <p class="eyebrow">Intended setup</p>
+                <h2 id="start-title">Try the demo, then connect your workspace.</h2>
+            </div>
+
+            <div class="command-steps">
+                <article class="command-step">
+                    <div class="command-copy">
+                        <p class="step-label">Try it without credentials</p>
+                        <p>Open the populated demo workspace and use the same interface and mutation flow as the live client.</p>
+                    </div>
+                    <pre aria-label="Run the LazyLinear demo"><code>npx lazylinear --demo</code></pre>
+                </article>
+                <article class="command-step">
+                    <div class="command-copy">
+                        <p class="step-label">Install and connect</p>
+                        <p>Install the executable, run it, then paste a Linear personal API key or an already-issued OAuth access token at the masked prompt.</p>
+                    </div>
+                    <pre aria-label="Install and run LazyLinear"><code>npm install -g lazylinear
+lazylinear</code></pre>
+                </article>
+            </div>
+
+            <p class="start-note">For the current source setup, full key map, authentication details, and product boundaries, use the <a href="https://github.com/Silence-Among-Crows/LazyLinear#readme">repository documentation</a>.</p>
+        </section>
+    </main>
+
+    <footer class="site-footer">
+        <div class="shell footer-inner">
+            <div>
+                <a class="brand footer-brand" href="#top">
+                    <span class="brand-mark" aria-hidden="true">LL</span>
+                    <span>lazylinear</span>
+                </a>
+                <p>MIT licensed. Source and documentation are available on <a href="https://github.com/Silence-Among-Crows/LazyLinear">GitHub</a>.</p>
+            </div>
+            <p class="disclaimer">LazyLinear is an independent project. It is not affiliated with, endorsed by, or sponsored by Linear, and Linear has not endorsed this product.</p>
+        </div>
+    </footer>
+</body>
+</html>

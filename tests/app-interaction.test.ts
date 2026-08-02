@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { stripVTControlCharacters } from "node:util";
 import React from "react";
 import { render } from "ink-testing-library";
 import stringWidth from "string-width";
@@ -30,14 +31,19 @@ async function press(screen: ReturnType<typeof render>, input: string): Promise<
     await flushRender();
 }
 
+function plainTextFrame(screen: ReturnType<typeof render>): string {
+    const frame = screen.lastFrame() ?? "";
+    return stripVTControlCharacters(frame);
+}
+
 async function waitForFrame(
     screen: ReturnType<typeof render>,
     predicate: (frame: string) => boolean,
 ): Promise<string> {
-    let frame = screen.lastFrame() ?? "";
+    let frame = plainTextFrame(screen);
     for (let attempt = 0; attempt < 30 && !predicate(frame); attempt += 1) {
         await flushRender();
-        frame = screen.lastFrame() ?? "";
+        frame = plainTextFrame(screen);
     }
     return frame;
 }
@@ -81,36 +87,36 @@ test("demo TUI navigates, toggles board grouping, opens help, and unmounts", asy
 
     await flushRender();
 
-    const initial = screen.lastFrame() ?? "";
+    const initial = plainTextFrame(screen);
     assert.match(initial, /Northstar Labs \/ My issues/u);
     assert.match(initial, /j\/k move · enter inspect/u);
 
     screen.stdin.write("j");
     await flushRender();
-    const navigated = screen.lastFrame() ?? "";
+    const navigated = plainTextFrame(screen);
     assert.match(navigated, /Northstar Labs \/ All issues/u);
     assert.notEqual(navigated, initial);
 
     screen.stdin.write("2");
     await flushRender();
-    const contentFocused = screen.lastFrame() ?? "";
+    const contentFocused = plainTextFrame(screen);
     assert.match(contentFocused, /enter inspect  n new  e edit  d remove/u);
 
     screen.stdin.write("b");
     await flushRender();
-    const board = screen.lastFrame() ?? "";
+    const board = plainTextFrame(screen);
     assert.match(board, /group: status/u);
     assert.match(board, /h\/l column/u);
 
     screen.stdin.write("g");
     await flushRender();
-    const regrouped = screen.lastFrame() ?? "";
+    const regrouped = plainTextFrame(screen);
     assert.match(regrouped, /group: priority/u);
     assert.match(regrouped, /Urgent/u);
 
     screen.stdin.write("?");
     await flushRender();
-    const help = screen.lastFrame() ?? "";
+    const help = plainTextFrame(screen);
     assert.match(help, /Keybindings/u);
     assert.match(help, /toggle list and board layout/u);
     assert.match(help, /enter\/esc close/u);
@@ -131,7 +137,7 @@ test("teams remain a real list when the prior collection was in board mode", asy
     await press(screen, "j");
     await press(screen, "j");
 
-    const teams = screen.lastFrame() ?? "";
+    const teams = plainTextFrame(screen);
     assert.match(teams, /Northstar Labs \/ All teams/u);
     assert.match(teams, /3 teams/u);
     assert.match(teams, /\[CORE\]\s+Core Platform/u);
@@ -146,12 +152,12 @@ test("Space is a no-op for the selected issue while navigation is focused", asyn
     context.after(() => screen.unmount());
     await flushRender();
 
-    const before = screen.lastFrame() ?? "";
+    const before = plainTextFrame(screen);
     assert.match(before, /CORE-134/u);
     assert.match(before, /Status\s+Todo/u);
 
     await press(screen, " ");
-    const after = screen.lastFrame() ?? "";
+    const after = plainTextFrame(screen);
     assert.match(after, /CORE-134/u);
     assert.match(after, /Status\s+Todo/u);
     assert.doesNotMatch(after, /updated issue/u);
@@ -168,12 +174,12 @@ test("Space refuses to advance a canceled issue", async (context) => {
     await press(screen, "\r");
     await press(screen, "2");
 
-    const selected = screen.lastFrame() ?? "";
+    const selected = plainTextFrame(screen);
     assert.match(selected, /APP-76/u);
     assert.match(selected, /Status\s+Canceled/u);
 
     await press(screen, " ");
-    const unchanged = screen.lastFrame() ?? "";
+    const unchanged = plainTextFrame(screen);
     assert.match(unchanged, /APP-76/u);
     assert.match(unchanged, /Status\s+Canceled/u);
     assert.match(unchanged, /canceled issue cannot be advanced/u);
@@ -189,12 +195,12 @@ test("demo board moves preserve the selected issue while regrouping it", async (
     await press(screen, "k");
     await press(screen, "k");
     await press(screen, "b");
-    const before = screen.lastFrame() ?? "";
+    const before = plainTextFrame(screen);
     assert.match(before, /In Progress/u);
     assert.match(before, /› Resume event stream/u);
 
     await press(screen, "L");
-    const moved = screen.lastFrame() ?? "";
+    const moved = plainTextFrame(screen);
     assert.match(moved, /In Review/u);
     assert.match(moved, /› Resume event stream/u);
 });
@@ -207,7 +213,7 @@ test("44x18 content, inspector, and editor frames remain bounded and readable", 
     await flushRender();
 
     await press(screen, "2");
-    const content = screen.lastFrame() ?? "";
+    const content = plainTextFrame(screen);
     assertFrameFits(content, 44, 18);
     assert.match(content, /LL Northstar Labs \/ My issues\s+DEMO ready/u);
     assert.match(content, /2 My issues\s+ACTIVE/u);
@@ -215,7 +221,7 @@ test("44x18 content, inspector, and editor frames remain bounded and readable", 
     assert.match(content, /3 items · 1–3/u);
 
     await press(screen, "3");
-    const inspector = screen.lastFrame() ?? "";
+    const inspector = plainTextFrame(screen);
     assertFrameFits(inspector, 44, 18);
     assert.match(inspector, /3 Inspector\s+ACTIVE/u);
     assert.match(inspector, /CORE-134 Reject stale optimistic writes/u);
@@ -226,7 +232,7 @@ test("44x18 content, inspector, and editor frames remain bounded and readable", 
 
     await press(screen, "2");
     await press(screen, "e");
-    const editor = screen.lastFrame() ?? "";
+    const editor = plainTextFrame(screen);
     assertFrameFits(editor, 44, 18);
     assert.match(editor, /◆ Edit CORE-134/u);
     assert.match(editor, /Fields marked \* are required\./u);
@@ -295,17 +301,17 @@ test("token modal authenticates and reports an unexpectedly rejected workspace r
     });
     await flushRender();
 
-    const tokenPrompt = screen.lastFrame() ?? "";
+    const tokenPrompt = plainTextFrame(screen);
     assert.match(tokenPrompt, /Connect to Linear/u);
     assert.match(tokenPrompt, /Paste a personal API key or OAuth access token/u);
 
     await press(screen, personalApiKey);
     await press(screen, "\r");
 
-    let authenticatedFrame = screen.lastFrame() ?? "";
+    let authenticatedFrame = plainTextFrame(screen);
     for (let attempt = 0; attempt < 20 && !authenticatedFrame.includes("Authenticated Workspace"); attempt += 1) {
         await flushRender();
-        authenticatedFrame = screen.lastFrame() ?? "";
+        authenticatedFrame = plainTextFrame(screen);
     }
 
     assert.match(authenticatedFrame, /Authenticated Workspace \/ My issues/u);
@@ -345,7 +351,7 @@ test("horizontal-only terminal changes are detected when a remote PTY emits no r
     context.after(() => screen.unmount());
     await flushRender();
 
-    const wide = screen.lastFrame() ?? "";
+    const wide = plainTextFrame(screen);
     assertFrameFits(wide, 100, 24);
     assert.match(wide, /1 Navigation/u);
     assert.match(wide, /2 My issues/u);
@@ -355,7 +361,7 @@ test("horizontal-only terminal changes are detected when a remote PTY emits no r
     await new Promise<void>((resolve) => setTimeout(resolve, 280));
     await flushRender();
 
-    const twoPanel = screen.lastFrame() ?? "";
+    const twoPanel = plainTextFrame(screen);
     assertFrameFits(twoPanel, 70, 24);
     assert.match(twoPanel, /1 Navigation/u);
     assert.match(twoPanel, /2 My issues/u);
@@ -365,7 +371,7 @@ test("horizontal-only terminal changes are detected when a remote PTY emits no r
     await new Promise<void>((resolve) => setTimeout(resolve, 280));
     await flushRender();
 
-    const narrow = screen.lastFrame() ?? "";
+    const narrow = plainTextFrame(screen);
     assertFrameFits(narrow, 60, 24);
     assert.match(narrow, /1 Navigation/u);
     assert.doesNotMatch(narrow, /2 My issues|3 Inspector/u);
@@ -378,10 +384,10 @@ test("board columns remain navigable while the navigation panel has focus", asyn
 
     await press(screen, "j");
     await press(screen, "b");
-    assert.match(screen.lastFrame() ?? "", /› Reject stale optimistic writes/u);
+    assert.match(plainTextFrame(screen), /› Reject stale optimistic writes/u);
 
     await press(screen, "l");
-    const moved = screen.lastFrame() ?? "";
+    const moved = plainTextFrame(screen);
     assert.match(moved, /› Resume event stream after a dropped connection/u);
     assert.doesNotMatch(moved, /› Reject stale optimistic writes/u);
 });
@@ -393,7 +399,7 @@ test("demo journey creates, edits, moves, and archives one issue through the wor
 
     await press(screen, "2");
     await press(screen, "n");
-    assert.match(screen.lastFrame() ?? "", /Create issue/u);
+    assert.match(plainTextFrame(screen), /Create issue/u);
     await press(screen, "Architectural flow");
     await press(screen, "\x13");
     let frame = await waitForFrame(screen, (candidate) => candidate.includes("Architectural flow") && !candidate.includes("Create issue"));
@@ -411,7 +417,7 @@ test("demo journey creates, edits, moves, and archives one issue through the wor
     assert.match(frame, /Architectural flow v2/u);
 
     await press(screen, "d");
-    assert.match(screen.lastFrame() ?? "", /Confirm this destructive action/u);
+    assert.match(plainTextFrame(screen), /Confirm this destructive action/u);
     await press(screen, "y");
     frame = await waitForFrame(screen, (candidate) => candidate.includes("archived issue") && !candidate.includes("Architectural flow v2"));
     assert.doesNotMatch(frame, /Architectural flow v2/u);
