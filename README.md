@@ -6,7 +6,7 @@ It is a real TUI, not a terminal-themed web application. The production path tal
 
 ## Run it
 
-Requires Node.js 20 or newer.
+Requires Node.js 20.12 or newer.
 
 ```powershell
 npm install
@@ -15,7 +15,7 @@ npm link
 lazylinear
 ```
 
-LazyLinear accepts a personal API key interactively, through `LINEAR_API_KEY`, or through `--api-key`. The masked interactive prompt is the safest option because a command-line token can appear in shell history or process listings. The interactive token stays in process memory and is never written to disk.
+LazyLinear accepts a personal API key interactively, through `LINEAR_API_KEY`, or through `--api-key`. The masked interactive prompt avoids putting a command-line token in shell history or process listings. After an interactively entered token has successfully connected, LazyLinear asks whether to save it as `LINEAR_API_KEY` in `~/.lazylinear/.env`; declining keeps it in process memory only. The application-owned file is plain text inside the user's profile and is created with user-only permissions on platforms that support POSIX file modes.
 
 This is credential-based connection, not a built-in “Sign in with Linear” browser flow. LazyLinear accepts an already-issued OAuth access token through `--token` or the prompt and sends it as a bearer token, but it does not currently initiate OAuth, store or rotate refresh tokens, select a workspace during authorization, or provide logout/revocation. A distributable browser login requires a registered Linear OAuth application and its public client ID.
 
@@ -23,6 +23,8 @@ This is credential-based connection, not a built-in “Sign in with Linear” br
 $env:LINEAR_API_KEY = "lin_api_..."
 lazylinear
 ```
+
+Credential precedence is `--api-key` or `--token`, an existing process-level `LINEAR_API_KEY`, then `~/.lazylinear/.env`. The saved file is loaded into LazyLinear's process on Windows, macOS, and Linux; it does not modify the machine's global environment or any shell profile.
 
 Use the populated local workspace to try everything without credentials:
 

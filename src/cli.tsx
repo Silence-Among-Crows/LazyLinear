@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import React from "react";
 import { render } from "ink";
 import { App } from "./app.js";
+import { loadLinearApiKeyFromUserEnvironmentFile } from "./linear-api-key-file.js";
 
 type PackageMetadata = Pick<typeof import("../package.json"), "version">;
 
@@ -66,7 +67,7 @@ function printHelp(): void {
     process.stdout.write(`  --api-key <token>  Use a Linear personal API key or OAuth token\n`);
     process.stdout.write(`  -h, --help         Show this help\n`);
     process.stdout.write(`  -v, --version      Show the version\n\n`);
-    process.stdout.write(`Authentication:\n  LINEAR_API_KEY is used when --api-key is omitted. Tokens are never written to disk.\n`);
+    process.stdout.write(`Authentication:\n  LINEAR_API_KEY is used when --api-key is omitted. Interactive credentials can be saved to ~/.lazylinear/.env after validation.\n`);
 }
 
 const options = parseArguments(process.argv.slice(2));
@@ -81,10 +82,19 @@ if (options.error) {
     process.stderr.write("LazyLinear requires interactive terminal input and output. Run it directly in a TTY.\n");
     process.exitCode = 1;
 } else {
+    if (!options.demo && !options.token && !process.env.LINEAR_API_KEY) {
+        try {
+            loadLinearApiKeyFromUserEnvironmentFile();
+        } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            process.stderr.write(`${message}\n`);
+        }
+    }
+    const initialToken = options.token ?? process.env.LINEAR_API_KEY;
     render(
         <App
             demo={options.demo}
-            initialToken={options.token ?? process.env.LINEAR_API_KEY}
+            initialToken={initialToken}
         />,
         {
             exitOnCtrlC: true,

@@ -446,7 +446,7 @@ export function TokenModal(props: {
         <ModalShell title="Connect to Linear" width={props.width} height={props.height} footer={compact ? "enter connect · ^d demo · esc quit" : "enter connect · ctrl+d demo workspace · esc quit"}>
             <Box flexGrow={1} flexDirection="column" justifyContent="center" paddingX={2}>
                 <Text color={colors.text} bold>{compact ? "Paste a Linear token." : "Paste a personal API key or OAuth access token."}</Text>
-                <Text color={colors.faint}>{compact ? "Kept in memory only." : "The token stays in this process and is never written to disk."}</Text>
+                <Text color={colors.faint}>{compact ? "Choose whether to save after validation." : "After validation, you can choose whether to save it for future launches."}</Text>
                 <Text> </Text>
                 <Box width="100%" height={4} flexShrink={0}>
                     <Box width="100%" height={3} flexShrink={0} borderStyle="single" borderColor={colors.cyan} paddingX={1}>
@@ -456,6 +456,42 @@ export function TokenModal(props: {
                 </Box>
                 <Text color={colors.faint}>{compact ? "Settings → Security & access" : "Create a key in Linear → Settings → Security & access."}</Text>
                 {props.loading && <Text color={colors.yellow}>Connecting to Linear…</Text>}
+                {props.error && <Text color={colors.red}>{truncate(`! ${props.error}`, messageWidth)}</Text>}
+            </Box>
+        </ModalShell>
+    );
+}
+
+export function TokenPersistenceModal(props: {
+    readonly width: number;
+    readonly height: number;
+    readonly saving: boolean;
+    readonly error?: string;
+    readonly onSave: () => void;
+    readonly onSkip: () => void;
+}) {
+    const compact = props.width < 60 || props.height < 22;
+    const messageWidth = Math.max(12, props.width - 12);
+    useInput((input, key) => {
+        if (input.toLocaleLowerCase() === "y") {
+            props.onSave();
+        } else if (input.toLocaleLowerCase() === "n" || key.escape) {
+            props.onSkip();
+        }
+    }, { isActive: !props.saving });
+    return (
+        <ModalShell
+            title="Remember Linear token?"
+            width={props.width}
+            height={props.height}
+            footer={props.saving ? "saving…" : "y save · n / esc skip"}
+        >
+            <Box flexGrow={1} flexDirection="column" justifyContent="center" paddingX={2}>
+                <Text color={colors.text} bold>{compact ? "Save to ~/.lazylinear/.env?" : "Save this token as LINEAR_API_KEY in ~/.lazylinear/.env?"}</Text>
+                <Text color={colors.muted} wrap="wrap">Future LazyLinear launches will connect without asking for the token again.</Text>
+                <Text> </Text>
+                <Text color={colors.yellow} wrap="wrap">The value is stored in plain text inside your user profile and can be read by other processes running as you.</Text>
+                {props.saving && <Text color={colors.yellow}>Saving LINEAR_API_KEY…</Text>}
                 {props.error && <Text color={colors.red}>{truncate(`! ${props.error}`, messageWidth)}</Text>}
             </Box>
         </ModalShell>

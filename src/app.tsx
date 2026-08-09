@@ -36,7 +36,14 @@ import {
     interactionReducer,
     type WorkspaceResource,
 } from "./interaction-state.js";
-import { ConfirmModal, EditorModal, HelpModal, TokenModal } from "./modals.js";
+import { persistLinearApiKeyInUserEnvironmentFile } from "./linear-api-key-file.js";
+import {
+    ConfirmModal,
+    EditorModal,
+    HelpModal,
+    TokenModal,
+    TokenPersistenceModal,
+} from "./modals.js";
 import {
     ContentPanel,
     DetailPanel,
@@ -60,12 +67,18 @@ interface RefreshableTerminalOutput {
     readonly _refreshSize?: () => void;
 }
 
+interface PendingTokenPersistence {
+    readonly token: string;
+    readonly session: WorkspaceSession;
+}
+
 const TERMINAL_SIZE_POLL_INTERVAL_MS = 200;
 
 export interface AppProps {
     readonly initialToken?: string;
     readonly demo?: boolean;
     readonly linearFetch?: LinearFetch;
+    readonly persistLinearApiKey?: (token: string) => Promise<void>;
 }
 
 function terminalSize(): TerminalSize {
@@ -579,16 +592,27 @@ export function App(props: AppProps) {
     const [session, setSession] = useState<WorkspaceSession>();
     const [connecting, setConnecting] = useState(false);
     const [connectionError, setConnectionError] = useState("");
+    const [pendingTokenPersistence, setPendingTokenPersistence] = useState<PendingTokenPersistence>();
+    const [savingToken, setSavingToken] = useState(false);
+    const [tokenPersistenceError, setTokenPersistenceError] = useState("");
     const initialConnectionStarted = useRef(false);
 
-    const connect = useCallback(async (adapter: DemoWorkspaceAdapter | LinearWorkspaceAdapter): Promise<void> => {
+    const connect = useCallback(async (
+        adapter: DemoWorkspaceAdapter | LinearWorkspaceAdapter,
+        manuallyEnteredToken?: string,
+    ): Promise<void> => {
         setConnecting(true);
         setConnectionError("");
         const candidate = new ObservableWorkspaceSession(adapter);
         try {
             await candidate.refresh();
             if (candidate.state.phase === "ready") {
-                setSession(candidate);
+                if (manuallyEnteredToken) {
+                    setTokenPersistenceError("");
+                    setPendingTokenPersistence({ token: manuallyEnteredToken, session: candidate });
+                } else {
+                    setSession(candidate);
+                }
                 return;
             }
             const failure = candidate.state.phase === "failed" ? candidate.state.failure.message : "The workspace did not become ready.";
@@ -612,8 +636,46 @@ export function App(props: AppProps) {
         }
     }, [connect, props.demo, props.initialToken, props.linearFetch]);
 
+    async function persistPendingToken(): Promise<void> {
+        if (!pendingTokenPersistence) {
+            return;
+        }
+        setSavingToken(true);
+        setTokenPersistenceError("");
+        try {
+            await (props.persistLinearApiKey ?? persistLinearApiKeyInUserEnvironmentFile)(pendingTokenPersistence.token);
+            setSession(pendingTokenPersistence.session);
+            setPendingTokenPersistence(undefined);
+        } catch (error) {
+            setTokenPersistenceError(error instanceof Error ? error.message : String(error));
+        } finally {
+            setSavingToken(false);
+        }
+    }
+
+    function skipPendingTokenPersistence(): void {
+        if (!pendingTokenPersistence) {
+            return;
+        }
+        setSession(pendingTokenPersistence.session);
+        setPendingTokenPersistence(undefined);
+        setTokenPersistenceError("");
+    }
+
     if (session) {
         return <WorkspaceScreen session={session} size={size} />;
+    }
+    if (pendingTokenPersistence) {
+        return (
+            <TokenPersistenceModal
+                width={size.width}
+                height={size.height}
+                saving={savingToken}
+                error={tokenPersistenceError}
+                onSave={() => void persistPendingToken()}
+                onSkip={skipPendingTokenPersistence}
+            />
+        );
     }
     return (
         <TokenModal
@@ -621,7 +683,7 @@ export function App(props: AppProps) {
             height={size.height}
             error={connectionError}
             loading={connecting}
-            onSubmit={(token) => void connect(new LinearWorkspaceAdapter(token, undefined, props.linearFetch))}
+            onSubmit={(token) => void connect(new LinearWorkspaceAdapter(token, undefined, props.linearFetch), token)}
             onDemo={() => void connect(new DemoWorkspaceAdapter())}
             onQuit={exit}
         />

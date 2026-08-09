@@ -243,9 +243,11 @@ test("44x18 content, inspector, and editor frames remain bounded and readable", 
     assert.doesNotMatch(editor, / ields|═ save · esc cancel/u);
 });
 
-test("token modal authenticates and reports an unexpectedly rejected workspace refresh", async (context) => {
+test("token modal validates, saves an opted-in credential, and reports an unexpectedly rejected workspace refresh", async (context) => {
     const personalApiKey = "lin_api_modal_personal";
     const authorizationHeaders: string[] = [];
+    const persistedTokens: string[] = [];
+    let persistenceAttemptCount = 0;
     let returnInvalidWorkspaceContract = false;
     const linearFetch = async (input: string | URL | Request, init?: RequestInit): Promise<Response> => {
         assert.equal(input, "https://api.linear.app/graphql");
@@ -295,7 +297,16 @@ test("token modal authenticates and reports an unexpectedly rejected workspace r
         return jsonResponse({ data: { [field]: emptyConnection() } });
     };
 
-    const screen = render(React.createElement(App, { linearFetch }));
+    const screen = render(React.createElement(App, {
+        linearFetch,
+        persistLinearApiKey: async (token: string) => {
+            persistenceAttemptCount += 1;
+            if (persistenceAttemptCount === 1) {
+                throw new Error("The credential file could not be updated.");
+            }
+            persistedTokens.push(token);
+        },
+    }));
     context.after(() => {
         screen.unmount();
     });
@@ -308,6 +319,26 @@ test("token modal authenticates and reports an unexpectedly rejected workspace r
     await press(screen, personalApiKey);
     await press(screen, "\r");
 
+    const persistencePrompt = await waitForFrame(
+        screen,
+        (frame) => frame.includes("Remember Linear token?"),
+    );
+    assert.match(persistencePrompt, /Save this token as LINEAR_API_KEY in ~\/\.lazylinear\/\.env/u);
+    assert.match(persistencePrompt, /stored in plain text/u);
+    assert.deepEqual(persistedTokens, []);
+
+    await press(screen, "y");
+    const failedPersistence = await waitForFrame(
+        screen,
+        (frame) => frame.includes("The credential file could not be updated."),
+    );
+    assert.match(failedPersistence, /Remember Linear token/u);
+    assert.equal(persistenceAttemptCount, 1);
+    assert.equal(authorizationHeaders.length, 9);
+    assert.deepEqual(persistedTokens, []);
+
+    await press(screen, "y");
+
     let authenticatedFrame = plainTextFrame(screen);
     for (let attempt = 0; attempt < 20 && !authenticatedFrame.includes("Authenticated Workspace"); attempt += 1) {
         await flushRender();
@@ -318,6 +349,8 @@ test("token modal authenticates and reports an unexpectedly rejected workspace r
     assert.doesNotMatch(authenticatedFrame, /Connect to Linear/u);
     assert.equal(authorizationHeaders.length, 9);
     assert.deepEqual(authorizationHeaders, Array(9).fill(personalApiKey));
+    assert.equal(persistenceAttemptCount, 2);
+    assert.deepEqual(persistedTokens, [personalApiKey]);
 
     returnInvalidWorkspaceContract = true;
     await press(screen, "r");
@@ -326,6 +359,34 @@ test("token modal authenticates and reports an unexpectedly rejected workspace r
         (frame) => frame.includes("Unable to refresh the workspace:"),
     );
     assert.match(failedRefresh, /Unable to refresh the workspace:/u);
+});
+
+test("an invalid manually entered token is never offered for persistence", async (context) => {
+    const persistedTokens: string[] = [];
+    const screen = render(React.createElement(App, {
+        linearFetch: async () => new Response(JSON.stringify({
+            errors: [{ message: "The Linear credential was rejected." }],
+        }), {
+            status: 401,
+            headers: { "Content-Type": "application/json" },
+        }),
+        persistLinearApiKey: async (token: string) => {
+            persistedTokens.push(token);
+        },
+    }));
+    context.after(() => screen.unmount());
+    await flushRender();
+
+    await press(screen, "lin_api_invalid");
+    await press(screen, "\r");
+    const rejected = await waitForFrame(
+        screen,
+        (frame) => frame.includes("The Linear credential was rejected."),
+    );
+
+    assert.match(rejected, /Connect to Linear/u);
+    assert.doesNotMatch(rejected, /Remember Linear token/u);
+    assert.deepEqual(persistedTokens, []);
 });
 
 test("horizontal-only terminal changes are detected when a remote PTY emits no resize event", async (context) => {
@@ -384,6 +445,7 @@ test("board columns remain navigable while the navigation panel has focus", asyn
 
     await press(screen, "j");
     await press(screen, "b");
+    await press(screen, "h");
     assert.match(plainTextFrame(screen), /› Reject stale optimistic writes/u);
 
     await press(screen, "l");
