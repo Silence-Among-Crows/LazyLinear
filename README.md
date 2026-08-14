@@ -4,16 +4,16 @@ LazyLinear is a keyboard-first terminal client for [Linear](https://linear.app),
 
 It is a real TUI, not a terminal-themed web application. The production path talks directly to Linear's public GraphQL API and the built-in demo path exercises the same UI and mutation flow without touching a workspace.
 
-## Run it
+## Install
 
 Requires Node.js 20.12 or newer.
 
 ```powershell
-npm install
-npm run build
-npm link
+npm install --global lazylinear@beta
 lazylinear
 ```
+
+Until the first stable release, the `beta` npm tag is required. Run `npm install --global lazylinear@beta` again to update to a newer beta.
 
 LazyLinear accepts a personal API key interactively, through `LINEAR_API_KEY`, or through `--api-key`. The masked interactive prompt avoids putting a command-line token in shell history or process listings. After an interactively entered token has successfully connected, LazyLinear asks whether to save it as `LINEAR_API_KEY` in `~/.lazylinear/.env`; declining keeps it in process memory only. The application-owned file is plain text inside the user's profile and is created with user-only permissions on platforms that support POSIX file modes.
 
@@ -32,7 +32,7 @@ Use the populated local workspace to try everything without credentials:
 lazylinear --demo
 ```
 
-For development, `npm run dev` launches demo mode. `npm run check` runs the typecheck, tests, and production build.
+For local development, run `npm install` followed by `npm run dev` to launch demo mode. `npm run check` runs the typecheck, tests, and a clean production build. Use `npm link` after building to expose the local checkout as the `lazylinear` command.
 
 The layout listens for normal TTY resize events and also checks the backing terminal size every 200 ms so remote horizontal-only changes do not have to wait for a later vertical resize. The supported minimum is 44 columns by 18 rows. If a remote client never propagates its new dimensions to the backing PTY, the application cannot discover a size the process has not been given.
 

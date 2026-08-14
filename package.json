@@ -1,7 +1,15 @@
 {
   "name": "lazylinear",
-  "version": "0.1.0",
+  "version": "0.1.0-beta.1",
   "description": "A keyboard-first terminal UI for Linear, inspired by lazygit.",
+  "homepage": "https://lazylinear.com",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Silence-Among-Crows/LazyLinear.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Silence-Among-Crows/LazyLinear/issues"
+  },
   "type": "module",
   "bin": {
     "lazylinear": "dist/src/cli.js"
@@ -15,12 +23,15 @@
     "node": ">=20.12"
   },
   "scripts": {
+    "clean": "node --eval \"require('node:fs').rmSync('dist', { recursive: true, force: true })\"",
     "dev": "tsx src/cli.tsx --demo",
     "start": "node dist/src/cli.js",
-    "build": "tsc -p tsconfig.build.json",
+    "build": "npm run clean && tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit",
     "test": "tsx --test tests/**/*.test.ts",
-    "check": "npm run typecheck && npm test && npm run build"
+    "check": "npm run typecheck && npm test && npm run build",
+    "prepack": "npm run build",
+    "prepublishOnly": "npm run typecheck && npm test"
   },
   "keywords": [
     "linear",
