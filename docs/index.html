@@ -61,7 +61,7 @@
                 <article>
                     <p class="section-number" aria-hidden="true">03</p>
                     <h3>Connect directly</h3>
-                    <p>LazyLinear talks to Linear's GraphQL API. The interactive prompt masks your token and keeps it in process memory rather than writing it to disk.</p>
+                    <p>LazyLinear talks directly to Linear's GraphQL API. The interactive prompt masks your token; after a successful connection, you choose whether to save the API key in <code>~/.lazylinear/.env</code> or keep it only for the current run.</p>
                 </article>
             </div>
             <p class="scope-note">It is deliberately focused on issues, projects, teams, and issue custom views. It does not cover every setting and surface in Linear.</p>
@@ -90,14 +90,14 @@
                         <p class="step-label">Try it without credentials</p>
                         <p>Open the populated demo workspace and use the same interface and mutation flow as the live client.</p>
                     </div>
-                    <pre aria-label="Run the LazyLinear demo"><code>npx lazylinear --demo</code></pre>
+                    <pre aria-label="Run the LazyLinear demo"><code>npx lazylinear@beta --demo</code></pre>
                 </article>
                 <article class="command-step">
                     <div class="command-copy">
                         <p class="step-label">Install and connect</p>
-                        <p>Install the executable, run it, then paste a Linear personal API key or an already-issued OAuth access token at the masked prompt.</p>
+                        <p>Install the current beta, run it, then paste a Linear personal API key or an already-issued OAuth access token at the masked prompt.</p>
                     </div>
-                    <pre aria-label="Install and run LazyLinear"><code>npm install -g lazylinear
+                    <pre aria-label="Install and run LazyLinear"><code>npm install -g lazylinear@beta
 lazylinear</code></pre>
                 </article>
             </div>
